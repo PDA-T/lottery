@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>盛大彩票</title>
+<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.1.0/css/bootstrap.min.css">
+<script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdn.staticfile.org/popper.js/1.12.5/umd/popper.min.js"></script>
+<script src="https://cdn.staticfile.org/twitter-bootstrap/4.1.0/js/bootstrap.min.js"></script>
+<script src="https://cdn.staticfile.org/vue/2.4.2/vue.min.js"></script>
+<script src="https://cdn.staticfile.org/vue-resource/1.5.1/vue-resource.min.js"></script>
+<link href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common/common.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+.quick-navbar {
+	margin-bottom: 0.5rem;
+	padding-top: 0.2rem;
+	padding-bottom: 0.2rem;
+}
+
+.quick-navbar i {
+	width: 43px;
+	height: 43px;
+	display: block;
+	background-size: 100%;
+}
+
+.login-icon {
+	background-image: url(/images/index/login.png)
+}
+
+.register-icon {
+	background-image: url(/images/index/register.png)
+}
+
+.recharge-icon {
+	background-image: url(/images/index/recharge.png)
+}
+
+.withdraw-icon {
+	background-image: url(/images/index/withdraw.png)
+}
+
+.service-icon {
+	background-image: url(/images/index/service.png)
+}
+
+.hot-game {
+	height: 7rem;
+	background-color: #f2f2f2;
+	margin-bottom: 1rem;
+	display: flex;
+	padding-left: 0.2rem;
+	padding-right: 0.2rem;
+}
+
+.hot-game-logo {
+	flex: 1.5;
+	display: flex;
+	align-items: center;
+}
+
+.hot-game-logo img {
+	border-radius: 4rem;
+}
+
+.hot-game-body {
+	flex: 3;
+	display: flex;
+	flex-direction: column;
+}
+
+.hot-game-body-item {
+	padding-bottom: 0.7rem;
+}
+
+.hot-game-body-item .progress {
+	height: 0.3rem;
+}
+
+.hot-game-body-item .current-issue-num {
+	float: right;
+}
+
+.onekey-place-order-item {
+	text-align: center;
+}
+</style>
+</head>
+
+<body>
+	<div th:replace="common/header::html"></div>
+	<div id="index" v-cloak>
+		<div class="page-body">
+			<nav class="navbar bg-light quick-navbar">
+				<a class="navbar-brand" v-show="!isLoggedInFlag" v-on:click="goTo('/login')"><i class="login-icon"></i> <span>登录</span> </a> <a class="navbar-brand" v-show="!isLoggedInFlag" v-on:click="goTo('/register')"><i class="register-icon"></i><span>注册</span></a> <a class="navbar-brand" v-show="isLoggedInFlag" v-on:click="goTo('/login')"><i class="recharge-icon"></i> <span>充值</span> </a> <a class="navbar-brand" v-show="isLoggedInFlag" v-on:click="goTo('/login')"><i class="withdraw-icon"></i> <span>提现</span> </a> <a class="navbar-brand"><i class="service-icon"></i><span>客服</span></a>
+			</nav>
+			<div class="card">
+				<div class="card-header">
+					<span>热门游戏</span><span class="float-right">更多&gt;</span>
+				</div>
+				<div class="card-body">
+					<div class="hot-game" v-for="hotGame in hotGames">
+						<div class="hot-game-logo">
+							<img v-bind:src="'/images/lottery-logo/' + hotGame.gameCode.toLowerCase() + '.png'" />
+						</div>
+						<div class="hot-game-body">
+							<div class="hot-game-body-item">{{hotGame.gameName}}</div>
+							<div class="hot-game-body-item">
+								<div class="progress">
+									<div class="progress-bar bg-warning" v-bind:style="{width: (hotGame.currentIssueInner/hotGame.issueCount) * 100 + '%'}"></div>
+								</div>
+								<div>
+									<span>全天{{hotGame.issueCount}}期</span><span class="current-issue-num">{{hotGame.currentIssue != null ? '第' + hotGame.currentIssue + '期' : '休市中...'}}</span>
+								</div>
+							</div>
+							<div class="hot-game-body-item onekey-place-order-item">
+								<button type="button" class="btn btn-danger btn-sm">一键下注</button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div th:replace="common/footer::html"></div>
+	<script type="text/javascript">
+		var indexVM = new Vue({
+			el : '#index',
+			data : {
+				isLoggedInFlag : true,
+				hotGames : []
+			},
+			computed : {},
+			created : function() {
+			},
+			mounted : function() {
+				headerVM.title = '盛大彩票';
+				this.getUserAccountInfo();
+				this.loadHotGame();
+			},
+			methods : {
+				goTo : function(url) {
+					window.location.href = url;
+				},
+
+				/**
+				 * 获取用户账号信息
+				 */
+				getUserAccountInfo : function() {
+					var that = this;
+					that.$http.get('/userAccount/getUserAccountInfo').then(function(res) {
+						if (res.body.data == null) {
+							that.isLoggedInFlag = false;
+						}
+					});
+				},
+
+				loadHotGame : function() {
+					var that = this;
+					that.$http.get('/game/findTop5HotGame').then(function(res) {
+						that.hotGames = res.body.data;
+					});
+				}
+			}
+		});
+	</script>
+</body>
+</html>

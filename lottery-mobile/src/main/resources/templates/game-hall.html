@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>游戏大厅</title>
+<link rel="stylesheet" href="https://cdn.staticfile.org/twitter-bootstrap/4.1.0/css/bootstrap.min.css">
+<script src="https://cdn.staticfile.org/jquery/3.2.1/jquery.min.js"></script>
+<script src="https://cdn.staticfile.org/popper.js/1.12.5/umd/popper.min.js"></script>
+<script src="https://cdn.staticfile.org/twitter-bootstrap/4.1.0/js/bootstrap.min.js"></script>
+<script src="https://cdn.staticfile.org/vue/2.4.2/vue.min.js"></script>
+<script src="https://cdn.staticfile.org/vue-resource/1.5.1/vue-resource.min.js"></script>
+<script src="https://cdn.bootcss.com/dayjs/1.7.8/dayjs.min.js"></script>
+<link href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common/common.css" rel="stylesheet" type="text/css">
+<style type="text/css">
+.quick-navbar {
+	margin-bottom: 0.5rem;
+	padding-top: 0.2rem;
+	padding-bottom: 0.2rem;
+}
+
+.quick-navbar i {
+	width: 43px;
+	height: 43px;
+	display: block;
+	background-size: 100%;
+}
+
+.login-icon {
+	background-image: url(/images/index/login.png)
+}
+
+.register-icon {
+	background-image: url(/images/index/register.png)
+}
+
+.recharge-icon {
+	background-image: url(/images/index/recharge.png)
+}
+
+.withdraw-icon {
+	background-image: url(/images/index/withdraw.png)
+}
+
+.service-icon {
+	background-image: url(/images/index/service.png)
+}
+
+.hot-game {
+	height: 4.5rem;
+	background-color: #f2f2f2;
+	margin-bottom: 1rem;
+	display: flex;
+	padding-left: 0.2rem;
+	padding-right: 0.2rem;
+}
+
+.hot-game-logo {
+	flex: 1.2;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.hot-game-logo img {
+	border-radius: 4rem;
+	height: 4rem;
+}
+
+.hot-game-body {
+	flex: 4;
+	display: flex;
+	flex-direction: column;
+}
+
+.game-name-body-item {
+	color: #d22018;
+}
+
+.lottery-closed-body-item, .lotterying-body-item {
+	color: orange;
+}
+
+.current-issue-body-item {
+	color: #838793;
+}
+
+.lottery-num {
+	
+}
+
+.lottery-num span {
+	width: 1.54688rem;
+	height: 1.54688rem;
+	margin-right: .29375rem;
+	float: left;
+	background: #d22018;
+	font-size: 1rem;
+	color: #fff;
+	text-align: center;
+	line-height: 1.54688rem;
+	border-radius: 100%;
+}
+</style>
+</head>
+
+<body>
+	<div th:replace="common/header::html"></div>
+	<div id="gameHall" v-cloak>
+		<div class="page-body">
+			<div>
+				<div class="hot-game" v-for="gameSituation in gameSituations">
+					<div class="hot-game-logo">
+						<img v-bind:src="'/images/lottery-logo/' + gameSituation.gameCode.toLowerCase() + '.png'" />
+					</div>
+					<div class="hot-game-body">
+						<div class="hot-game-body-item game-name-body-item">{{gameSituation.gameName}}</div>
+						<div class="hot-game-body-item lottery-num-body-item" v-show="gameSituation.currentIssue != null">
+							<div class="hot-game-body-item lotterying-body-item" v-show="gameSituation.preIssueLotteryNum == null">正在开奖...</div>
+							<div class="lottery-num" v-show="gameSituation.preIssueLotteryNum != null">
+								<span v-for="num in splitlotteryNum(gameSituation.preIssueLotteryNum)">{{num}}</span>
+							</div>
+						</div>
+						<div class="hot-game-body-item lottery-closed-body-item" v-show="gameSituation.currentIssue == null">休市中...</div>
+						<div class="hot-game-body-item current-issue-body-item">
+							<span style="padding-right: 1.2rem;">第{{gameSituation.currentIssue != null ? gameSituation.currentIssue : gameSituation.nextIssue}}期</span><span class="">截至</span><span class="">{{gameSituation.countdownClock}}</span>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div th:replace="common/footer::html"></div>
+	<script type="text/javascript">
+		var gameHallVM = new Vue({
+			el : '#gameHall',
+			data : {
+				gameSituations : []
+			},
+			computed : {},
+			created : function() {
+			},
+			mounted : function() {
+				headerVM.title = '游戏大厅';
+				this.loadAllGameSituation();
+			},
+			methods : {
+				loadAllGameSituation : function() {
+					var that = this;
+					that.$http.get('/game/findAllGameSituation').then(function(res) {
+						var result = res.body.data;
+						for (var i = 0; i < result.length; i++) {
+							var endTime = result[i].currentIssueEndTime;
+							if (endTime == null) {
+								endTime = result[i].nextIssueEndTime;
+							}
+							var second = dayjs(endTime).diff(dayjs(res.body.timestamp), 'second');
+							result[i].second = second;
+							result[i].countdownClock = '';
+						}
+						that.gameSituations = result;
+						that.countdown();
+					});
+				},
+
+				countdown : function() {
+					var that = this;
+					var countdownInterval = window.setInterval(function() {
+						var gameSituations = that.gameSituations;
+						var clearIntervalFlag = true;
+						for (var i = 0; i < gameSituations.length; i++) {
+							var second = gameSituations[i].second;
+							if (second < 0) {
+								continue;
+							}
+							gameSituations[i].countdownClock = that.buildCountdownClock(second);
+							second--;
+							gameSituations[i].second = second;
+							clearIntervalFlag = clearIntervalFlag && (second < 0);
+						}
+						if (clearIntervalFlag) {
+							console.log(gameSituations);
+							window.clearInterval(countdownInterval);
+						}
+					}, 1000);
+				},
+
+				buildCountdownClock : function(second) {
+					var that = this;
+					var countdownHour = 0;
+					var countdownMinute = 0;
+					var countdownSecond = 0;
+					if (second > 0) {
+						countdownHour = parseInt(second / (60 * 60) % 24);
+						countdownMinute = parseInt(second / 60 % 60);
+						countdownSecond = parseInt(second % 60);
+					}
+					if (countdownHour < 10) {
+						countdownHour = '0' + countdownHour;
+					}
+					if (countdownMinute < 10) {
+						countdownMinute = '0' + countdownMinute;
+					}
+					if (countdownSecond < 10) {
+						countdownSecond = '0' + countdownSecond;
+					}
+					return countdownHour + ':' + countdownMinute + ':' + countdownSecond;
+				},
+
+				goTo : function(url) {
+					window.location.href = url;
+				},
+
+				splitlotteryNum : function(lotteryNum) {
+					if (lotteryNum == null || lotteryNum == '') {
+						return [];
+					}
+					return lotteryNum.split(',');
+				}
+
+			}
+		});
+	</script>
+</body>
+</html>
